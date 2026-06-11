@@ -4,7 +4,7 @@ from typing import Any
 from app.llm import call_llm
 from app.retrieve import retrieve
 
-SEUIL_SIMILARITE = float(os.getenv("SEUIL_SIMILARITE", "0.35"))
+SEUIL_SIMILARITE = float(os.getenv("SEUIL_SIMILARITE", "0.38"))
 TOP_K = int(os.getenv("TOP_K", "5"))
 
 REFUS_MESSAGE = "Je ne dispose pas de cette information dans le corpus."
@@ -52,18 +52,21 @@ def build_context(hits: list[dict[str, Any]]) -> str:
 
 def build_prompt(question: str, context: str) -> str:
     """
-    Construit le prompt anti-hallucination.
-
-    Le but est de forcer le LLM à répondre uniquement avec le contexte fourni.
+    Construit le prompt envoyé au LLM.
+    Le seuil de similarité a déjà filtré les résultats non pertinents.
     """
     return f"""
-Tu es un assistant de recherche sur une base de connaissances.
+Tu es un assistant de recherche basé sur un corpus documentaire.
+
+Tu dois répondre uniquement avec les informations présentes dans le contexte fourni.
 
 Règles :
-- Réponds uniquement avec les informations présentes dans le contexte.
-- Cite les sources utilisées.
-- Si le contexte ne permet pas de répondre, dis : "{REFUS_MESSAGE}"
-- N'invente jamais d'information.
+- Si le contexte contient des éléments utiles, réponds avec ces éléments.
+- Si l'information est partielle, donne une réponse partielle sans inventer.
+- Ne complète jamais avec des connaissances externes.
+- Cite les sources utilisées à la fin de la réponse.
+- Refuse uniquement si aucun élément du contexte ne permet de répondre.
+- Dans ce cas seulement, réponds exactement : "{REFUS_MESSAGE}"
 
 Contexte :
 {context}
@@ -112,11 +115,16 @@ def answer(question: str, top_k: int = TOP_K) -> dict[str, Any]:
 
     generated_answer, tokens = call_llm(prompt)
 
+    sources = extract_sources(hits)
+
+    if generated_answer.strip() == REFUS_MESSAGE:
+        sources = []
+
     latency_ms = round((perf_counter() - start) * 1000)
 
     return {
         "answer": generated_answer,
-        "sources": extract_sources(hits),
+        "sources": sources,
         "latency_ms": latency_ms,
         "tokens": tokens,
         "debug": {
