@@ -1,7 +1,7 @@
 import os
 from time import perf_counter
 from typing import Any
-
+from app.llm import call_llm
 from app.retrieve import retrieve
 
 SEUIL_SIMILARITE = float(os.getenv("SEUIL_SIMILARITE", "0.35"))
@@ -100,16 +100,17 @@ def answer(question: str, top_k: int = TOP_K) -> dict[str, Any]:
                 "prompt": 0,
                 "completion": 0,
             },
+            "debug": {
+                "best_score": hits[0].get("score") if hits else None,
+                "threshold": SEUIL_SIMILARITE,
+                "top_k": top_k,
+            },
         }
 
     context = build_context(hits)
     prompt = build_prompt(question, context)
 
-    # TODO: remplacer cette réponse temporaire par un vrai appel LLM.
-    generated_answer = (
-        "Réponse temporaire : les sources sont trouvées, "
-        "le prompt est construit, le LLM sera branché ensuite."
-    )
+    generated_answer, tokens = call_llm(prompt)
 
     latency_ms = round((perf_counter() - start) * 1000)
 
@@ -117,15 +118,14 @@ def answer(question: str, top_k: int = TOP_K) -> dict[str, Any]:
         "answer": generated_answer,
         "sources": extract_sources(hits),
         "latency_ms": latency_ms,
-        "tokens": {
-            # Estimation temporaire : on compte les mots du prompt.
-            # Plus tard, on récupérera les vrais tokens depuis l'API du LLM.
-            "prompt": len(prompt.split()),
-            "completion": len(generated_answer.split()),
-        },
+        "tokens": tokens,
         "debug": {
             "best_score": hits[0].get("score"),
             "threshold": SEUIL_SIMILARITE,
             "top_k": top_k,
+            "retrieved_texts": [
+                hit.get("text", "")[:300]
+                for hit in hits
+            ],
         },
     }

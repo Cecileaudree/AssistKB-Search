@@ -16,6 +16,7 @@ class AskResponse(BaseModel):
     sources: list[str]
     latency_ms: int
     tokens: dict
+    debug: dict | None = None
 
 
 @app.get("/health")
