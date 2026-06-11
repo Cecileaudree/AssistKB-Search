@@ -100,6 +100,11 @@ def answer(question: str, top_k: int = TOP_K) -> dict[str, Any]:
                 "prompt": 0,
                 "completion": 0,
             },
+            "debug": {
+                "best_score": hits[0].get("score") if hits else None,
+                "threshold": SEUIL_SIMILARITE,
+                "top_k": top_k,
+            },
         }
 
     context = build_context(hits)
