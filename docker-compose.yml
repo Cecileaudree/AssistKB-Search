@@ -1,0 +1,51 @@
+name: assistkb-search
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: assistkb-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    restart: unless-stopped
+
+  indexer:
+    build: .
+    container_name: assistkb-indexer
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: assistkb
+      EMBED_MODEL: all-MiniLM-L6-v2
+      EMBED_BATCH_SIZE: 64
+      CHUNKS_PATH: corpus/chunks.jsonl
+    volumes:
+      - .:/app
+    depends_on:
+      - qdrant
+    command: sh -c "sleep 5 && python -m app.embed"
+    restart: "no"
+
+  api:
+    build: .
+    container_name: assistkb-api
+    ports:
+      - "8000:8000"
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: assistkb
+      TOP_K: 5
+      SEUIL_SIMILARITE: 0.35
+      EMBED_MODEL: all-MiniLM-L6-v2
+      EMBED_BATCH_SIZE: 64
+      CHUNKS_PATH: corpus/chunks.jsonl
+    volumes:
+      - .:/app
+    depends_on:
+      - qdrant
+      - indexer
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+volumes:
+  qdrant-data:
