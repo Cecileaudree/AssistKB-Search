@@ -13,12 +13,8 @@ services:
   indexer:
     build: .
     container_name: assistkb-indexer
-    environment:
-      QDRANT_URL: http://qdrant:6333
-      QDRANT_COLLECTION: assistkb
-      EMBED_MODEL: all-MiniLM-L6-v2
-      EMBED_BATCH_SIZE: 64
-      CHUNKS_PATH: corpus/chunks.jsonl
+    env_file:
+      - .env
     volumes:
       - .:/app
     depends_on:
@@ -31,14 +27,8 @@ services:
     container_name: assistkb-api
     ports:
       - "8000:8000"
-    environment:
-      QDRANT_URL: http://qdrant:6333
-      QDRANT_COLLECTION: assistkb
-      TOP_K: 5
-      SEUIL_SIMILARITE: 0.38
-      EMBED_MODEL: all-MiniLM-L6-v2
-      EMBED_BATCH_SIZE: 64
-      CHUNKS_PATH: corpus/chunks.jsonl
+    env_file:
+      - .env
     volumes:
       - .:/app
     depends_on:
