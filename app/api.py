@@ -7,8 +7,19 @@ app = FastAPI(title="AssistKB Search API")
 
 
 class AskRequest(BaseModel):
-    question: str = Field(..., min_length=3)
-    top_k: int | None = Field(default=None, ge=1, le=20)
+    question: str = Field(
+        ...,
+        min_length=3,
+        description="Question utilisateur à poser au corpus.",
+        examples=["Quelles mesures de sécurité sont recommandées pour les données personnelles ?"],
+    )
+    top_k: int | None = Field(
+        default=None,
+        ge=1,
+        le=20,
+        description="Nombre de chunks à récupérer. Si absent, utilise TOP_K défini dans .env.",
+        examples=[5],
+    )
 
 
 class AskResponse(BaseModel):
