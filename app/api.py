@@ -11,7 +11,7 @@ class AskRequest(BaseModel):
         ...,
         min_length=3,
         description="Question utilisateur à poser au corpus.",
-        examples=["Quelles mesures de sécurité sont recommandées pour les données personnelles ?"],
+        examples=["Comment les données sont collectées ?"],
     )
     top_k: int | None = Field(
         default=None,
@@ -22,12 +22,33 @@ class AskRequest(BaseModel):
     )
 
 
+class TokenUsage(BaseModel):
+    prompt: int = Field(..., examples=[439])
+    completion: int = Field(..., examples=[42])
+
+
+class DebugInfo(BaseModel):
+    best_score: float | None = Field(default=None, examples=[0.3964938])
+    threshold: float = Field(..., examples=[0.38])
+    top_k: int = Field(..., examples=[5])
+    retrieved_texts: list[str] | None = Field(
+        default=None,
+        examples=[["Extrait du chunk récupéré..."]],
+    )
+
+
 class AskResponse(BaseModel):
-    answer: str
-    sources: list[str]
-    latency_ms: int
-    tokens: dict
-    debug: dict | None = None
+    answer: str = Field(
+        ...,
+        examples=["Les données sont collectées et vérifiées manuellement par l'équipe WebSentinel."],
+    )
+    sources: list[str] = Field(
+        default_factory=list,
+        examples=[["documentation.txt"]],
+    )
+    latency_ms: int = Field(..., examples=[2241])
+    tokens: TokenUsage
+    debug: DebugInfo | None = None
 
 
 @app.get("/health")

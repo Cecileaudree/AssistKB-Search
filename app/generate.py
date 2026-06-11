@@ -1,11 +1,8 @@
-import os
+
 from time import perf_counter
 from typing import Any
 from app.llm import call_llm
 from app.retrieve import retrieve
-
-SEUIL_SIMILARITE = float(os.getenv("SEUIL_SIMILARITE", "0.38"))
-TOP_K = int(os.getenv("TOP_K", "5"))
 
 REFUS_MESSAGE = "Je ne dispose pas de cette information dans le corpus."
 
@@ -78,21 +75,37 @@ Réponse :
 """.strip()
 
 
-def answer(question: str, top_k: int = TOP_K) -> dict[str, Any]:
+def answer(question: str, top_k: int | None = None) -> dict[str, Any]:
     """
     Fonction principale appelée par l'API.
 
     Elle :
-    1. récupère les chunks pertinents ;
-    2. refuse si aucun chunk n'est trouvé ou si le score est trop faible ;
-    3. construit un prompt si les chunks sont pertinents ;
-    4. retournera ensuite la réponse du LLM.
+    1. appelle retrieve.py pour récupérer les chunks et appliquer le seuil ;
+    2. refuse si le retrieval indique que le score est trop faible ;
+    3. construit le contexte et le prompt ;
+    4. appelle le LLM ;
+    5. retourne réponse + sources + latence + tokens.
     """
     start = perf_counter()
 
-    hits = retrieve(question, top_k=top_k)
+    if top_k is None:
+        retrieval_result = retrieve(question)
+    else:
+        retrieval_result = retrieve(question, top_k=top_k)
 
-    if not hits or hits[0].get("score", 0) < SEUIL_SIMILARITE:
+    hits = retrieval_result["hits"]
+
+    debug = {
+        "best_score": retrieval_result["best_score"],
+        "threshold": retrieval_result["threshold"],
+        "top_k": retrieval_result["top_k"],
+        "retrieved_texts": [
+            hit.get("text", "")[:300]
+            for hit in hits
+        ],
+    }
+
+    if not retrieval_result["accepted"]:
         latency_ms = round((perf_counter() - start) * 1000)
 
         return {
@@ -103,11 +116,7 @@ def answer(question: str, top_k: int = TOP_K) -> dict[str, Any]:
                 "prompt": 0,
                 "completion": 0,
             },
-            "debug": {
-                "best_score": hits[0].get("score") if hits else None,
-                "threshold": SEUIL_SIMILARITE,
-                "top_k": top_k,
-            },
+            "debug": debug,
         }
 
     context = build_context(hits)
@@ -127,13 +136,5 @@ def answer(question: str, top_k: int = TOP_K) -> dict[str, Any]:
         "sources": sources,
         "latency_ms": latency_ms,
         "tokens": tokens,
-        "debug": {
-            "best_score": hits[0].get("score"),
-            "threshold": SEUIL_SIMILARITE,
-            "top_k": top_k,
-            "retrieved_texts": [
-                hit.get("text", "")[:300]
-                for hit in hits
-            ],
-        },
+        "debug": debug,
     }
