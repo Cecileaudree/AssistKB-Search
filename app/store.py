@@ -195,26 +195,30 @@ class QdrantStore:
             Liste de SearchHit triée par score décroissant (meilleur en premier).
             Score compris entre 0 et 1 (similarité cosinus après normalisation).
         """
-        raw = self._client.search(
+        response = self._client.query_points(
             collection_name=COLLECTION_NAME,
-            query_vector=vector.tolist(),
+            query=vector.tolist(),
             limit=top_k,
             with_payload=True,
         )
 
+        raw = response.points
+
         hits: list[SearchHit] = []
         for r in raw:
-            metadata = {k: v for k, v in r.payload.items() if k != "text"}
+            payload = r.payload or {}
+            metadata = {k: v for k, v in payload.items() if k != "text"}
+
             hits.append(
                 SearchHit(
                     id=str(r.id),
                     score=float(r.score),
-                    text=r.payload.get("text", ""),
+                    text=payload.get("text", ""),
                     metadata=metadata,
                 )
             )
-        return hits
 
+        return hits
     # ── Utilitaires ───────────────────────────────────────────────────────── #
 
     def count(self) -> int:
