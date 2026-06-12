@@ -1,6 +1,6 @@
 ﻿# AssistKB Search projet A 
 # Membre de l'equipe
-  Aurelie Demure(R3) Dina Chaouki(R2) Deumeni Cécile-Audrée (R1)
+  Aurelie Demure(R3-R4) Dina Chaouki(R2) Deumeni Cécile-Audrée (R1-R4)
 AssistKB Search est une application de recherche de documents basée sur des embeddings et Qdrant, avec une API FastAPI pour interroger un corpus.
 
 ## Architecture
