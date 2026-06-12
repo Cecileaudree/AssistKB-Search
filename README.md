@@ -8,7 +8,7 @@ AssistKB Search est une application de recherche de documents basée sur des emb
 - `app/` : logique principale du projet
   - `api.py` : serveur FastAPI exposant `/ask` et `/health`
   - `llm.py` : appel du LLM Google Gemini
-  - `retrieve.py` : recherche de chunks dans Qdrant
+  - `retrieve.py` : recherche de chunks les plus pertinents dans Qdrant
   - `store.py` : gestion du store Qdrant
   - `embed.py` : génération d'embeddings et indexation
   - `generate.py` : construction du prompt et réponses basées sur le corpus
@@ -76,11 +76,16 @@ Cela démarre :
 - `indexer` : génération d'embeddings et insertion dans Qdrant
 - `api` : API FastAPI exposée sur `http://localhost:8000`
 
-### 4. Tester l'API
+### 4. Poser une question à l'API
 
-```bash
-curl -X POST http://localhost:8000/ask -H "Content-Type: application/json" -d '{"question": "Quelle est la capitale de l’Australie ?"}'
-```
+Une fois les conteneurs démarrés, l’API est accessible en local à l’adresse suivante : `http://localhost:8000`
+
+Pour vérifier que l’API fonctionne correctement, utiliser la route de santé : `http://localhost:8000/health`
+
+Pour poser une question au système RAG, aller à l'adresse suivante : `http://localhost:8000/docs`
+
+Depuis l'interface Swagger fournie par FastAPI, ouvrir la route `/ask`, , cliquer sur **Try it out**, saisir une question, puis **exécuter** la requête.
+
 
 ### 5. Ou lancer l'API sans Docker
 
