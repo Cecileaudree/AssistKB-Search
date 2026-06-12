@@ -37,7 +37,22 @@ flowchart LR
 
 > Le parcours d'une question, etape par etape : reception API -\>
 > embedding -\> recherche Qdrant -\> seuil de refus -\> prompt -\> LLM
-> -\> reponse + sources. Precisez votre **seuil de similarite**.
+> -\> reponse + sources.
+
+Le parcours complet est le suivant :
+
+1. réception de la question via `/ask` ;
+2. génération de l’embedding de la question ;
+3. recherche des chunks pertinents dans Qdrant ;
+4. comparaison du meilleur score avec le seuil de similarité ;
+5. refus si le contexte est insuffisant ;
+6. construction du prompt si le contexte est accepté ;
+7. appel au LLM ;
+8. retour de la réponse avec les sources.
+
+Cette organisation permet d’avoir un RAG capable à la fois de répondre lorsque l’information est présente dans le corpus et de refuser lorsqu’elle ne l’est pas.
+
+
 
 ### Ingestion
 
@@ -84,20 +99,6 @@ La réponse finale contient :
 #### Endpoint `/ask` avec `api.py`
 
 Le fichier `app/api.py` expose l’endpoint `POST /ask`. Cet endpoint reçoit la question de l’utilisateur, appelle la chaîne de traitement RAG, puis retourne une réponse structurée.
-
-Le parcours complet est le suivant :
-
-1. réception de la question via `/ask` ;
-2. génération de l’embedding de la question ;
-3. recherche des chunks pertinents dans Qdrant ;
-4. comparaison du meilleur score avec le seuil de similarité ;
-5. refus si le contexte est insuffisant ;
-6. construction du prompt si le contexte est accepté ;
-7. appel au LLM ;
-8. retour de la réponse avec les sources.
-
-Cette organisation permet d’avoir un RAG capable à la fois de répondre lorsque l’information est présente dans le corpus et de refuser lorsqu’elle ne l’est pas.
-
 
 ## 5\. Structure du projet
 
@@ -147,9 +148,9 @@ Cette organisation permet d’avoir un RAG capable à la fois de répondre lorsq
 | Quelle est la recette de la tarte aux pommes ? | hors_corpus | 0.304 | 0.38 | refus | refus | documentation.txt |
 | Quelle est la capitale du Japon ? | hors_corpus | 0.318 | 0.38 | refus | refus | documentation.txt |
 | Quels sont les critères d'inclusion d'un outil ?  | dans_corpus | 0.572 | 0.38 | réponse | réponse | documentation.txt |
-| Comment les données sont elles collectées ?  | dans_corpus | 0.385 | 0.35 | réponse | réponse | documentation.txt |
-| Quelle est la fréquence de mise à jour du jeu de données ? | dans_corpus | 0.457 | 0.35 | réponse | réponse | documentation.txt |
-| Combien d’outils IA sont recensés dans l’annuaire ? | dans_corpus | 0.448 | 0.35 | réponse | réponse | documentation.txt |
+| Comment les données sont elles collectées ?  | dans_corpus | 0.385 | 0.38 | réponse | réponse | documentation.txt |
+| Quelle est la fréquence de mise à jour du jeu de données ? | dans_corpus | 0.457 | 0.38 | réponse | réponse | documentation.txt |
+| Combien d’outils IA sont recensés dans l’annuaire ? | dans_corpus | 0.448 | 0.38 | réponse | réponse | documentation.txt |
 
 Lors d’un premier test avec un seuil fixé à 0.35, trois questions hors corpus sur quatre ont été refusées correctement.  
 Cependant, la question sur la coupe du monde 2018 a obtenu un score de similarité de 0.36 et a donc été acceptée à tort.  
