@@ -114,6 +114,7 @@ Cette organisation permet d’avoir un RAG capable à la fois de répondre lorsq
 - `Dockerfile` : image Python pour l'application
 - `requirements.txt` : dépendances Python
 - `corpus/` : dossiers de données et chunks générés (ignoré par Git)
+- `analytics/`: dossier contenants les scripts et fichiers utilisés pour évaluer le système RAG
 
 ## 6\. Choix techniques (le pourquoi)
 

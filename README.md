@@ -18,12 +18,14 @@ AssistKB Search est une application de recherche de documents basée sur des emb
 - `Dockerfile` : image Python pour l'application
 - `requirements.txt` : dépendances Python
 - `corpus/` : dossiers de données et chunks générés (ignoré par Git)
+- `analytics/`: dossier contenants les scripts et fichiers utilisés pour évaluer le système RAG
 
 ## Prérequis
 
 - Python 3.10+
 - Docker & Docker Compose
 - Clé API Google Gemini dans `GEMINI_API_KEY`
+- Le fichier `corpus/chunks.jsonl`, déjà fourni dans le dépôt
 
 ## Installation
 
@@ -46,25 +48,11 @@ copy .env.example .env
 pip install -r requirements.txt
 ```
 
-## Flux de travail
+## Lancement du projet avec Docker Compose
 
 ### 1. Récupérer les données
 
-Le script `fetch_corpus.ps1` télécharge des fichiers publics dans `corpus/raw/`.
-
-```powershell
-./fetch_corpus.ps1 -Profile open -DataQuery "intelligence artificielle"
-```
-
-### 2. Ingest et génération de chunks
-
-Lancer le traitement du corpus pour produire `corpus/chunks.jsonl` :
-
-```bash
-python app/ingest.py
-```
-
-### 3. Démarrer en local avec Docker Compose
+Le projet se lance avec une seule commande :
 
 ```bash
 docker compose up -d
@@ -99,6 +87,28 @@ uvicorn app.api:app --reload --port 8000
 - `corpus/chunks.jsonl` : corpus segmenté en chunks prêts à être indexés
 
 `/corpus` est déjà ignoré dans `.gitignore`, donc les fichiers téléchargés ne sont pas suivis par Git.
+
+## Régénerer le corpus
+
+Cette étape n’est pas nécessaire pour lancer le projet, car `corpus/chunks.jsonl` est déjà fourni.
+
+Les données utilisées pour constituer le corpus sont récupérées depuis des sources publiqes, sur data.gouv.fr.
+
+Si l’on souhaite reconstruire le corpus depuis les documents sources, il faut d’abord récupérer les données, puis relancer l’ingestion :
+
+```powershell
+./fetch_corpus.ps1 -Profile open -DataQuery "intelligence artificielle"
+```
+
+Puis :
+
+```powershell
+python -m app.ingest
+```
+
+Cela régénère le fichier :
+
+`corpus/chunks.jsonl`
 
 ## Notes
 
