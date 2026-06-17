@@ -3,6 +3,7 @@ import time
 from typing import Any
 
 import requests
+from app.metrics import summarize_api_rows
 
 # docker compose exec api python -m analytics.evaluate_api_metrics
 
@@ -77,12 +78,7 @@ def evaluate_api_metrics() -> None:
     latencies = [row["latency_ms"] for row in rows]
     total_tokens_values = [row["total_tokens"] for row in rows]
 
-    summary = {
-        "latence_moyenne": round(statistics.mean(latencies), 2),
-        "latence_p50": round(statistics.median(latencies), 2),
-        "latence_p95": round(percentile(latencies, 0.95), 2),
-        "tokens_moyens": round(statistics.mean(total_tokens_values), 2),
-    }
+    summary = summarize_api_rows(rows)
 
     output_path = "analytics/resultats_api_metrics.md"
 
@@ -100,10 +96,13 @@ def evaluate_api_metrics() -> None:
         f.write("\n## Synthèse\n\n")
         f.write("| Métrique | Valeur |\n")
         f.write("|---|---:|\n")
-        f.write(f"| Latence moyenne | {summary['latence_moyenne']} ms |\n")
-        f.write(f"| Latence p50 | {summary['latence_p50']} ms |\n")
-        f.write(f"| Latence p95 | {summary['latence_p95']} ms |\n")
-        f.write(f"| Tokens moyens | {summary['tokens_moyens']} |\n")
+        f.write(f"| Total de requêtes | {summary.total_requests} |\n")
+        f.write(f"| Taux de refus | {summary.refusal_rate:.2%} |\n")
+        f.write(f"| Latence moyenne | {summary.latency_avg_ms:.2f} ms |\n")
+        f.write(f"| Latence p50 | {summary.latency_p50_ms:.2f} ms |\n")
+        f.write(f"| Latence p95 | {summary.latency_p95_ms:.2f} ms |\n")
+        f.write(f"| Tokens moyens | {summary.tokens_avg:.2f} |\n")
+        f.write(f"| Coût estimé | ${summary.cost_estimate_usd:.6f} |\n")
 
     print(f"Tableau généré : {output_path}")
 
