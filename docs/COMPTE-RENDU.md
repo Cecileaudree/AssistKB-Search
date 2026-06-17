@@ -111,6 +111,15 @@ La réponse finale contient :
 
 Le fichier `app/api.py` expose l’endpoint `POST /ask`. Cet endpoint reçoit la question de l’utilisateur, appelle la chaîne de traitement RAG, puis retourne une réponse structurée.
 
+### Observabilité et métriques
+
+La partie observabilité est gérée par le module `app/metrics.py`, qui centralise les calculs utiles pour le monitoring : taux de refus, latence moyenne, latence p50/p95, tokens moyens et coût estimé. Le script `analytics/evaluate_api_metrics.py` utilise ce module pour produire un rapport Markdown exploitable.
+
+La stack Docker contient également :
+- `qdrant` pour le moteur vectoriel ;
+- `indexer` qui charge le corpus et indexe les embeddings dans Qdrant ;
+- `api` qui expose l’API FastAPI.
+
 ## 5\. Structure du projet
 
 - `app/` : logique principale du projet
@@ -148,7 +157,7 @@ Le fichier `app/api.py` expose l’endpoint `POST /ask`. Cet endpoint reçoit la
 | Taux de refus (questions hors corpus) | 100 % | avec le seuil final fixé à `0.38` |
 | Latence p50 / p95 | 1561 / 4223 ms | mesures indicatives sur 6 questions |
 | Tokens moyens (prompt + completion) | 345.33 | moyenne sur toutes les questions, refus inclus |
-| Cout projete "si paye" / 1000 questions | Non estimé | dépend du modèle LLM et de sa tarification |
+| Coût estimé | 0.030 $ | estimation basée sur 1000 prompts et 1000 complétions à 0.03/0.06 $/1k tokens |
 
 #### Choix du seuil de refus (anti-hallucination) :
 
