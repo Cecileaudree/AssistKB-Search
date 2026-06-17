@@ -16,12 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import (
-    Distance,
-    PointStruct,
-    VectorParams,
-)
+from qdrant_client import QdrantClient, models as qmodels
 
 # ──────────────────────────────────────────────────────────────────────────── #
 # Configuration (surchargeable via variables d'environnement)                 #
@@ -29,8 +24,8 @@ from qdrant_client.http.models import (
 
 QDRANT_URL       = os.environ.get("QDRANT_URL",        "http://qdrant:6333")
 COLLECTION_NAME  = os.environ.get("QDRANT_COLLECTION", "assistkb")
-VECTOR_DIM       = 384          # all-MiniLM-L6-v2
-DISTANCE         = Distance.COSINE   # cosinus pour vecteurs normalisés
+VECTOR_DIM       = 384                       # all-MiniLM-L6-v2
+DISTANCE         = qmodels.Distance.COSINE   # cosinus pour vecteurs normalisés
 
 
 # ──────────────────────────────────────────────────────────────────────────── #
@@ -75,7 +70,7 @@ class QdrantStore:
         if COLLECTION_NAME not in existing:
             self._client.create_collection(
                 collection_name=COLLECTION_NAME,
-                vectors_config=VectorParams(
+                vectors_config=qmodels.VectorParams(
                     size=VECTOR_DIM,
                     distance=DISTANCE,
                 ),
@@ -161,7 +156,7 @@ class QdrantStore:
                     payload[k] = v
 
             points.append(
-                PointStruct(
+                qmodels.PointStruct(
                     id=point_id,
                     vector=vector.tolist(),
                     payload=payload,
@@ -195,20 +190,18 @@ class QdrantStore:
             Liste de SearchHit triée par score décroissant (meilleur en premier).
             Score compris entre 0 et 1 (similarité cosinus après normalisation).
         """
-        response = self._client.query_points(
+        # query_points() remplace search() déprécié depuis qdrant-client 1.7
+        result = self._client.query_points(
             collection_name=COLLECTION_NAME,
             query=vector.tolist(),
             limit=top_k,
             with_payload=True,
         )
 
-        raw = response.points
-
         hits: list[SearchHit] = []
-        for r in raw:
+        for r in result.points:
             payload = r.payload or {}
             metadata = {k: v for k, v in payload.items() if k != "text"}
-
             hits.append(
                 SearchHit(
                     id=str(r.id),
@@ -224,4 +217,5 @@ class QdrantStore:
     def count(self) -> int:
         """Retourne le nombre de vecteurs indexés dans la collection."""
         info = self._client.get_collection(COLLECTION_NAME)
-        return info.points_count or 0
+        # points_count est l'attribut standard (vectors_count en fallback)
+        return info.points_count or info.vectors_count or 0

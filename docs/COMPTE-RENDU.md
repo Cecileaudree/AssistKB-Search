@@ -15,8 +15,7 @@
 
 ## 2\. Objectif
 
-> En 5 lignes : que fait votre RAG, sur quel corpus, pour quel besoin
-> (lien fil rouge AssistKB-Neosoft).
+AssistKB Search est un système de recherche augmentée (RAG) conçu pour répondre à des questions en s'appuyant uniquement sur un corpus documentaire structuré. Le corpus utilisé regroupe des sources publiques françaises : avis de sécurité du CERT-FR, guides RGPD de la CNIL et jeux de données de data.gouv.fr. L'objectif est de permettre à un utilisateur de poser une question en langage naturel et d'obtenir une réponse sourcée, générée à partir des documents indexés. Le système refuse de répondre si l'information n'est pas présente dans le corpus, ce qui limite les hallucinations. Ce projet s'inscrit dans le fil rouge AssistKB-Neosoft, qui vise à construire une base de connaissances interrogeable par une IA.
 
 ## 3\. Architecture
 
@@ -57,6 +56,18 @@ Cette organisation permet d’avoir un RAG capable à la fois de répondre lorsq
 ### Ingestion
 
 ### Index / Embeddings
+
+La partie **Index / Embeddings** est responsable de la transformation des chunks texte en vecteurs numériques, puis de leur stockage dans Qdrant.
+
+#### Génération des embeddings avec `embed.py`
+
+Le fichier `app/embed.py` charge le modèle `all-MiniLM-L6-v2` de la bibliothèque `sentence-transformers`. Ce modèle produit des vecteurs de dimension 384. Les vecteurs sont normalisés en L2 avant d'être envoyés à Qdrant, ce qui permet d'utiliser la similarité cosinus de façon efficace.
+
+Le chargement du modèle est fait en singleton : il est chargé une seule fois au démarrage du processus et réutilisé pour toutes les requêtes. Les chunks sont vectorisés par batchs de 64 pour éviter de saturer la mémoire sur de grands corpus.
+
+#### Stockage dans Qdrant avec `store.py`
+
+Le fichier `app/store.py` gère la connexion à Qdrant et l'insertion des vecteurs. La collection est créée automatiquement si elle n'existe pas encore. Chaque point inséré reçoit un identifiant UUID v5 calculé de façon déterministe à partir de la source et de l'index du chunk. Cela rend l'indexation idempotente : relancer le processus d'embedding ne duplique pas les données déjà présentes dans Qdrant.
 
 ### Retrieval / Generation
 
@@ -121,10 +132,10 @@ Le fichier `app/api.py` expose l’endpoint `POST /ask`. Cet endpoint reçoit la
 
 | Choix | Valeur retenue | Justification |
 |---|---|---|
-| Modèle embeddings | `all-MiniLM-L6-v2` | _____ |
-| Vector store | `Qdrant` | _____ |
-| Distance | _____ | _____ |
-| `chunk_size` / overlap | _____ / _____ | _____ |
+| Modèle embeddings | `all-MiniLM-L6-v2` | Modèle léger et rapide, entraîné pour la similarité sémantique. Produit des vecteurs de dimension 384, bien adaptés à des corpus de taille moyenne. Fonctionne sans GPU. |
+| Vector store | `Qdrant` | Base vectorielle open source performante, avec support natif de la similarité cosinus, de l'upsert idempotent et d'un dashboard intégré. Facile à déployer via Docker. |
+| Distance | `Cosine` | Les vecteurs sont normalisés en L2 avant indexation, ce qui rend la similarité cosinus équivalente au produit scalaire et donc plus rapide à calculer. |
+| `chunk_size` / overlap | `500` / `100` | Une taille de 500 caractères correspond à environ 100-150 mots, ce qui représente un passage lisible avec assez de contexte. Le recouvrement de 100 caractères évite de couper une idée en deux entre deux chunks consécutifs. |
 | `top_k` | `5` | Valeur retenue comme compromis : elle fournit plus de contexte que `top_k=3`, tout en évitant le bruit plus important observé avec `top_k=8`. |
 | Seuil de refus | `0.38` | Seuil retenu pour limiter les hallucinations : il permet de refuser les questions hors corpus tout en conservant les questions pertinentes du corpus testées. |
 | LLM | `Google Gemini` | Modèle utilisé pour générer la réponse finale à partir des chunks récupérés. Le prompt encadre la génération afin de répondre uniquement à partir des sources fournies. |
@@ -224,7 +235,15 @@ Exemple d’une question hors corpus refusée :
 
 ## 8\. Difficultes et limites
 
-> Ce qui n'a pas marche, ce que vous feriez avec plus de temps.
+Plusieurs difficultés ont été rencontrées au cours du projet.
+
+La première concerne la **clé API Gemini**. Le modèle `genai.Client()` de la bibliothèque `google-genai` ne lit pas automatiquement la variable d'environnement `GEMINI_API_KEY` : il attend `GOOGLE_API_KEY`. Cela a provoqué des appels silencieux sans réponse générée. Le correctif a consisté à passer la clé explicitement au constructeur du client.
+
+La deuxième difficulté est liée à l'**encodage des textes**. Les fichiers récupérés via le script `fetch_corpus.ps1` (sous Windows) contenaient des caractères mal encodés (`FrÃ©quence` au lieu de `Fréquence`). Cela affecte la lisibilité des chunks dans les réponses, sans bloquer le fonctionnement du système.
+
+La troisième concerne la **gestion des PDFs**. Les guides CNIL téléchargés sont au format PDF, mais `ingest.py` ne supporte que les formats JSON et TXT. Ces documents n'ont donc pas pu être indexés dans le corpus, ce qui explique pourquoi les questions sur la CNIL restent sans réponse.
+
+Avec plus de temps, nous aurions ajouté le support PDF dans `ingest.py` (via `pymupdf` par exemple), corrigé l'encodage à la source dans le script de fetch, et testé sur un corpus plus large pour rendre les métriques plus représentatives.
 
 -----
 
